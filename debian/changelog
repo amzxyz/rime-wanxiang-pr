@@ -1,3 +1,9 @@
+rime-wanxiang (18.1.8-0deepin1) unstable; urgency=medium
+
+  * Import upstream version 18.1.8.
+
+ -- amzxyz <rcm@qq.com>  Mon, 26 Oct 2026 10:30:00 +0800
+
 rime-wanxiang (15.12.5-0deepin1) unstable; urgency=medium
 
   * Import upstream version 15.12.5.
