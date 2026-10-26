@@ -8,8 +8,6 @@
 local wanxiang = require("wanxiang/wanxiang")
 local M = {}
 
-local K_REJECT, K_ACCEPT, K_NOOP = 0, 1, 2
-
 -- 1. 全局常量定义 (Constants)
 
 -- [KpNumber] 小键盘键码映射
@@ -28,7 +26,7 @@ local LETTER_SEL_MAP = {
 
 -- [QuickSymbol] 默认符号映射表
 local SYMBOL_DEFAULT = {
-    q="：", w="？", e="（", r="）", t="~", y="·", u="『", i="』", o="〖", p="〗",
+    q="：", w="？", e="（", r="）", t="	", y="·", u="『", i="』", o="〖", p="〗",
     a="！", s="……", d="、", f="“", g="”", h="‘", j="’", k="【", l="】",
     z="。", x="？", c="！", v="——", b="%", n="《", m="》"
 }
@@ -128,18 +126,55 @@ local function ulen(s)
     return #s
 end
 
+-- 初始化时编译并缓存 Rime recognizer 正则；热路径只执行已编译匹配。
+local function load_rime_regex_matchers(config, path)
+    local matchers, seen = {}, {}
+    local map = config and config:get_map(path)
+    if not map then return matchers end
+
+    local keys = map:keys()
+    if not keys then return matchers end
+
+    for i = 1, #keys do
+        local value = map:get_value(keys[i])
+        local regex = value and value.value
+        if type(regex) == "string" and regex ~= "" and not seen[regex] then
+            local matcher, err = wanxiang.compile_regex(regex)
+            if matcher then
+                seen[regex] = true
+                matchers[#matchers + 1] = matcher
+            else
+                log.error(
+                    "failed to compile recognizer pattern '"
+                    .. tostring(regex)
+                    .. "': "
+                    .. tostring(err)
+                )
+            end
+        end
+    end
+
+    return matchers
+end
+
 -- 检查数字后是否紧跟功能编码 (KpNumber 使用)
 local function is_function_code_after_digit(env, context, digit_char)
     if not context or not digit_char or digit_char == "" then return false end
-    local code = context.input or ""
-    local s = code .. digit_char
-    local pats = env.kp_func_patterns
-    if not pats then return false end
-    for _, pat in ipairs(pats) do
-        if s:match(pat) then return true end
+
+    -- digit_char 必为数字，因此这里传入 regex_matches() 的 input 保证非空。
+    local input = (context.input or "") .. digit_char
+    local matchers = env.kp_func_matchers
+    if not matchers then return false end
+
+    for _, matcher in ipairs(matchers) do
+        if wanxiang.regex_matches(matcher, input) then
+            return true
+        end
     end
+
     return false
 end
+
 
 -- 计算尾部重复字符数 (LimitRepeated 使用)
 local function tail_rep(s)
@@ -192,7 +227,7 @@ function M.init(env)
     local context = engine.context
 
     -- [1] 配置加载 (按功能模块分类)
-    
+
     env.enable_backspace_limit = true
     env.enable_seg_loop = true
     env.enable_tone_fallback = true
@@ -214,7 +249,7 @@ function M.init(env)
         -- 基础开关加载
         local ok_bs, bs_val = pcall(function() return config:get_bool("super_processor/enable_backspace_limit") end)
         if ok_bs and bs_val ~= nil then env.enable_backspace_limit = bs_val end
-        
+
         local ok_seg, seg_val = pcall(function() return config:get_bool("super_processor/enable_seg_loop") end)
         if ok_seg and seg_val ~= nil then env.enable_seg_loop = seg_val end
 
@@ -284,14 +319,13 @@ function M.init(env)
     env.kp_page_size = config:get_int("menu/page_size") or 6
     local m = config:get_string("super_processor/kp_number_mode") or "select"
     env.kp_mode = (m == "auto" or m == "compose" or m == "select") and m or "select"
-    env.kp_func_patterns = wanxiang.load_regex_patterns(config, "recognizer/patterns")
+    env.kp_func_matchers = load_rime_regex_matchers(config, "recognizer/patterns")
 
     -- [LetterSelector] 字母选词状态位
     env.ls_active = false 
 
     -- [ToneFallback] 声调容错
     env.tone_state = "idle"
-    env.lookup_key = config:get_string('wanxiang_lookup/key') or '`'
 
     -- [QuickSymbol] 符号快打
     env.qs_trigger = "^([a-z])/$"
@@ -336,7 +370,7 @@ function M.init(env)
         if env.enable_tone_fallback then
             local t_state = env.tone_state or "idle"
             env.tone_state = "idle" 
-            
+
             if t_state == "compress" and input ~= "" then
                 local caret = (ctx.caret_pos ~= nil) and ctx.caret_pos or #input
                 if caret < 0 then caret = 0 end
@@ -344,7 +378,7 @@ function M.init(env)
 
                 local left  = (caret > 0) and input:sub(1, caret) or ""
                 local left_new, changed = compress_runs_keep_last(left)
-                
+
                 if changed then
                     if caret > 0 then ctx:pop_input(caret) end
                     if #left_new > 0 then ctx:push_input(left_new) end
@@ -363,10 +397,21 @@ function M.init(env)
         env.seg_last_caret_pos = ctx.caret_pos
 
         -- C. [LetterSelector] 缓存激活状态
+        -- punct 仅在 /数字 命令中启用字母选词，避免宽 punct 正则下
+        -- /p!、/a' 等符号命令继续输入字母时被误当成候选选择键。
         env.ls_active = false
         if not ctx.composition:empty() then
             local s = ctx.composition:back()
-            if s and (s:has_tag("number") or s:has_tag("Ndate")) then
+            local numeric_symbol = s
+                and s:has_tag("punct")
+                and input:match("^/%d+$") ~= nil
+            local ndate_input = s
+                and s:has_tag("shijian")
+                and #input >= 2
+                and #input <= 9
+                and input:match("^N%d+$") ~= nil
+
+            if s and (s:has_tag("number") or ndate_input or numeric_symbol) then
                 env.ls_active = true
             end
         end
@@ -397,10 +442,10 @@ end
 local function handle_quick_symbol_intercept(key, env, ctx)
     local kc = key.keycode
     if kc < 0x20 or kc > 0x7E then return false end
-    
+
     local input = ctx.input or ""
     local next_input = input .. string.char(kc)
-    
+
     if execute_quick_symbol(env, ctx, next_input) then
         return true
     end
@@ -486,7 +531,7 @@ local function handle_segmentation(key, env, ctx)
 
     local m = #conf.all
     local k = tlen - 1
-    
+
     local function restore()
         ctx.input = (env.seg_base or head) .. md
         env.seg_core, env.seg_start_idx, env.seg_N, env.seg_base = nil, nil, nil, nil
@@ -511,7 +556,6 @@ local function handle_segmentation(key, env, ctx)
         return true
     end
 end
-
 -- [Backspace Limit] 退格限制
 local function handle_backspace(key, env, ctx)
     if not env.enable_backspace_limit then return false end
@@ -525,9 +569,10 @@ local function handle_backspace(key, env, ctx)
 
     local cur_len = ctx.input and #ctx.input or 0
     if env.bs_sequence then
-        if not wanxiang.is_mobile_device() then
+        -- 不是移动设备，并且不属于特殊桌面环境
+        if not wanxiang.is_mobile_device() and not wanxiang.is_special_desktop() then
             if env.bs_prev_len == 1 and cur_len == 0 then
-                return true 
+                return true
             end
         end
         env.bs_prev_len = cur_len
@@ -537,14 +582,13 @@ local function handle_backspace(key, env, ctx)
     env.bs_prev_len = cur_len
     return false
 end
-
 -- [Limit Repeated] 重复输入限制
 local function handle_limit_repeat(key, env, ctx)
     if not env.enable_limit_repeated then return false end
 
     local kc = key.keycode
     if not (kc >= 0x61 and kc <= 0x7A) then return false end
-    
+
     local cand = ctx:get_selected_candidate()
     local preedit = cand and (cand.preedit or cand:get_genuine().preedit) or ""
     local segs = 1
@@ -554,12 +598,12 @@ local function handle_limit_repeat(key, env, ctx)
     local input = ctx.input or ""
     local nxt = input .. ch
     local last, rep_n = tail_rep(nxt)
-    
+
     if last:match(INITIALS) and rep_n > env.max_repeat then
         prompt(ctx, " 〔已超最大重复声母〕")
         return true
     end
-    
+
     if segs >= env.max_segments then
         prompt(ctx, " 〔已超最大输入长度〕")
         return true
@@ -573,27 +617,37 @@ local function handle_letter_select(key, env, ctx)
     if key:ctrl() or key:alt() or key:super() then return false end
     local idx = LETTER_SEL_MAP[key.keycode]
     if not idx then return false end
-    
+
     if ctx.composition:empty() then return false end
     local seg = ctx.composition:back()
     if not seg or not seg.menu then return false end
-    
-    local count = seg.menu:prepare(9)
-    if idx < 1 or idx > count then return false end
-    
-    ctx:select(idx - 1)
+
+    local page_size = tonumber(env.kp_page_size) or 10
+    if page_size < 1 then page_size = 10 end
+    if idx > page_size then return false end
+
+    local sel_index = seg.selected_index or 0
+    local page_start = math.floor(sel_index / page_size) * page_size
+    local count = seg.menu:prepare(page_start + idx)
+    local index = page_start + idx - 1
+    if index >= count then return false end
+
+    ctx:select(index)
     return true
 end
 
 -- [Select Character] 以词定字逻辑 (New!)
 local function handle_select_character(key, env, ctx)
-    -- 1. 检查配置是否存在
+    -- 检查配置是否存在
     if not (env.sc_first_key or env.sc_last_key) then return false end
-    
-    -- 2. 状态检查：必须在输入中或有候选菜单
+    -- 判断是否在命令模式，如果是，则关闭以词定字，释放占用的按键/符号
+    if wanxiang.is_function_mode and wanxiang.is_function_mode(ctx) then
+        return false
+    end
+    -- 状态检查：必须在输入中或有候选菜单
     if not (ctx:is_composing() or ctx:has_menu()) then return false end
 
-    -- 3. 键值与字符双重匹配（解决 Rime 返回 "bracketleft" 无法匹配 "[" 的问题）
+    -- 键值与字符双重匹配（解决 Rime 返回 "bracketleft" 无法匹配 "[" 的问题）
     local repr = key:repr()
     local ch = ""
     if key.keycode >= 0x20 and key.keycode <= 0x7E then
@@ -604,12 +658,12 @@ local function handle_select_character(key, env, ctx)
     local is_last  = (env.sc_last_key and (repr == env.sc_last_key or ch == env.sc_last_key))
     if not (is_first or is_last) then return false end
 
-    -- 4. 获取当前选中的候选词或输入
+    -- 获取当前选中的候选词或输入
     local text = ctx.input
     local cand = ctx:get_selected_candidate()
     if cand then text = cand.text end
 
-    -- 5. 执行上屏
+    -- 执行上屏
     if utf8.len(text) > 1 then
         if is_first then
             -- 上屏第一个字 (sub: 1 到 第二个字偏移量-1)
@@ -637,7 +691,7 @@ local function handle_number_logic(key, env, ctx)
     -- A. 小键盘不上屏处理
     if kp_num ~= nil then
         if key:ctrl() or key:alt() or key:super() or key:shift() then return false end
-        
+
         if env.enable_tone_fallback then
             env.tone_state = "skip"
         end
@@ -653,12 +707,20 @@ local function handle_number_logic(key, env, ctx)
 
         if env.kp_mode == "auto" then
             if env.kp_is_composing then
-                if ctx.push_input then ctx:push_input(ch) else ctx.input = input .. ch end
+                if ctx.push_input then
+                    ctx:push_input(ch)
+                else
+                    ctx.input = input .. ch
+                end
             else
-                env.engine:commit_text(ch)
+                return false
             end
-        else 
-            if ctx.push_input then ctx:push_input(ch) else ctx.input = input .. ch end
+        else
+            if ctx.push_input then
+                ctx:push_input(ch)
+            else
+                ctx.input = input .. ch
+            end
         end
         return true
     end
@@ -671,7 +733,7 @@ local function handle_number_logic(key, env, ctx)
 
     if digit_str then
         if key:ctrl() or key:alt() or key:super() then return false end
-        
+
         -- 只要是 T9 九键方案，数字键就是打字编码键，放行给底层
         if env.is_t9 then
             if env.enable_tone_fallback then
@@ -682,8 +744,8 @@ local function handle_number_logic(key, env, ctx)
 
         if env.enable_tone_fallback then
             local is_func_mode = false
-            if wanxiang.is_function_mode_active then
-                is_func_mode = wanxiang.is_function_mode_active(ctx)
+            if wanxiang.is_function_mode then
+                is_func_mode = wanxiang.is_function_mode(ctx)
             end
             local is_first_cand_has_eng = false
             local cand = ctx:get_selected_candidate()
@@ -693,7 +755,8 @@ local function handle_number_logic(key, env, ctx)
                 end
             end
 
-            if input:find(env.lookup_key, 1, true) or is_func_mode or is_first_cand_has_eng then
+            -- 不再根据反查前缀禁用声调回退，反查模式与普通输入一致。
+            if is_func_mode or is_first_cand_has_eng then
                 env.tone_state = "idle"
             else
                 env.tone_state = "compress"
@@ -736,71 +799,61 @@ local function handle_number_logic(key, env, ctx)
             env.tone_state = "idle"
         end
     end
-    
+
     return false
 end
 -- 5. 主入口函数 (Main Logic Flow)
 function M.func(key, env)
-    collectgarbage("step", 2)
     local ctx = env.engine.context
-    
+
     -- 1. 优先处理按键释放
     if key:release() then 
         handle_backspace(key, env, ctx)
-        return K_NOOP 
+        return wanxiang.RIME_PROCESS_RESULTS.kNoop 
     end
 
     local kc = key.keycode
 
     -- [Predict Space] 联想空格
     if kc == 0x20 then
-        if handle_predict_space(key, env, ctx) then return K_ACCEPT end
-    end
-
-    if ctx.composition:empty() then
-        if kc == 0xff0d or kc == 0xff8d or kc == 0x20 then
-            _G.english_spacing_break = true
-        end
-        if kc == 0x5c or kc == 0x2f then
-            _G.force_sticky_code = true
-        end
+        if handle_predict_space(key, env, ctx) then return wanxiang.RIME_PROCESS_RESULTS.kAccepted end
     end
 
     -- 2. QuickSymbol 拦截 (a-z + /)
     if handle_quick_symbol_intercept(key, env, ctx) then
-        return K_ACCEPT
+        return wanxiang.RIME_PROCESS_RESULTS.kAccepted
     end
 
     -- 3. Backspace 退格防止删除已上屏内容
     if kc == 0xFF08 then
-        if handle_backspace(key, env, ctx) then return K_ACCEPT end
+        if handle_backspace(key, env, ctx) then return wanxiang.RIME_PROCESS_RESULTS.kAccepted end
     end
 
     -- 4. Select Character 以词定字 (New!)
     -- 它的优先级很高，因为是针对当前候选的操作
     -- 但必须在 Backspace 之后，防止误操作
     if handle_select_character(key, env, ctx) then
-        return K_ACCEPT
+        return wanxiang.RIME_PROCESS_RESULTS.kAccepted
     end
 
     -- 5. 分词符 ' [SuperSegmentation] 处理分词符 '
     if kc == 0x27 then
-        if handle_segmentation(key, env, ctx) then return K_ACCEPT end
+        if handle_segmentation(key, env, ctx) then return wanxiang.RIME_PROCESS_RESULTS.kAccepted end
     end
 
     -- 6. 字母键 (a-z)[Limit Repeated] 重复输入限制
     if kc >= 0x61 and kc <= 0x7A then
-        if handle_limit_repeat(key, env, ctx) then return K_ACCEPT end
+        if handle_limit_repeat(key, env, ctx) then return wanxiang.RIME_PROCESS_RESULTS.kAccepted end
     end
 
     -- 7. (q-o + 特定 Tag)[Letter Selector] 字母选词
     if env.ls_active and (LETTER_SEL_MAP[kc] ~= nil) then
-        if handle_letter_select(key, env, ctx) then return K_ACCEPT end
+        if handle_letter_select(key, env, ctx) then return wanxiang.RIME_PROCESS_RESULTS.kAccepted end
     end
 
     -- 8. 数字键 (小键盘 + 声调 + 选词)[KpNumber & ToneFallback] 数字键综合逻辑
     if (kc >= 0xFFB0 and kc <= 0xFFB9) or (kc >= 0x30 and kc <= 0x39) then
-        if handle_number_logic(key, env, ctx) then return K_ACCEPT end
+        if handle_number_logic(key, env, ctx) then return wanxiang.RIME_PROCESS_RESULTS.kAccepted end
     else
         -- 非数字键，重置声调状态
         if env.enable_tone_fallback then
@@ -808,6 +861,6 @@ function M.func(key, env)
         end
     end
 
-    return K_NOOP
+    return wanxiang.RIME_PROCESS_RESULTS.kNoop
 end
 return M

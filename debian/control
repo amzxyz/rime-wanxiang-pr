@@ -22,55 +22,69 @@ Description: wanxiang pinyin for rime
 Package: rime-wanxiang-pinyin
 Architecture: all
 Depends: rime-wanxiang-base, ${misc:Depends}
-Conflicts: rime-wanxiang-zrm, rime-wanxiang-zrlong, rime-wanxiang-flypy, rime-wanxiang-mspy, rime-wanxiang-sogo, rime-wanxiang-abc, rime-wanxiang-ziguang
+Conflicts: rime-wanxiang-zrm, rime-wanxiang-zrlong, rime-wanxiang-flypy, rime-wanxiang-mspy, rime-wanxiang-sogo, rime-wanxiang-abc, rime-wanxiang-ziguang, rime-wanxiang-lantian, rime-wanxiang-daniu
 Description: wanxiang pinyin for rime
  wanxiang pinyin is a pinyin scheme for rime.
 
 Package: rime-wanxiang-zrm
 Architecture: all
 Depends: rime-wanxiang-base, ${misc:Depends}
-Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrlong, rime-wanxiang-flypy, rime-wanxiang-mspy, rime-wanxiang-sogo, rime-wanxiang-abc, rime-wanxiang-ziguang
+Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrlong, rime-wanxiang-flypy, rime-wanxiang-mspy, rime-wanxiang-sogo, rime-wanxiang-abc, rime-wanxiang-ziguang, rime-wanxiang-lantian, rime-wanxiang-daniu
 Description: wanxiang ziranma double pinyin for rime
  wanxiang ziranma double pinyin is a pinyin scheme for rime.
 
 Package: rime-wanxiang-zrlong
 Architecture: all
 Depends: rime-wanxiang-base, ${misc:Depends}
-Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrm, rime-wanxiang-flypy, rime-wanxiang-mspy, rime-wanxiang-sogo, rime-wanxiang-abc, rime-wanxiang-ziguang
+Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrm, rime-wanxiang-flypy, rime-wanxiang-mspy, rime-wanxiang-sogo, rime-wanxiang-abc, rime-wanxiang-ziguang, rime-wanxiang-lantian, rime-wanxiang-daniu
 Description: wanxiang ziranlong double pinyin for rime
  wanxiang ziranlong double pinyin is a pinyin scheme for rime.
 
 Package: rime-wanxiang-flypy
 Architecture: all
 Depends: rime-wanxiang-base, ${misc:Depends}
-Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrm, rime-wanxiang-zrlong, rime-wanxiang-mspy, rime-wanxiang-sogo, rime-wanxiang-abc, rime-wanxiang-ziguang
+Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrm, rime-wanxiang-zrlong, rime-wanxiang-mspy, rime-wanxiang-sogo, rime-wanxiang-abc, rime-wanxiang-ziguang, rime-wanxiang-lantian, rime-wanxiang-daniu
 Description: wanxiang flypy double pinyin for rime
  wanxiang flypy double pinyin is a pinyin scheme for rime.
 
 Package: rime-wanxiang-mspy
 Architecture: all
 Depends: rime-wanxiang-base, ${misc:Depends}
-Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrm, rime-wanxiang-zrlong, rime-wanxiang-flypy, rime-wanxiang-sogo, rime-wanxiang-abc, rime-wanxiang-ziguang
+Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrm, rime-wanxiang-zrlong, rime-wanxiang-flypy, rime-wanxiang-sogo, rime-wanxiang-abc, rime-wanxiang-ziguang, rime-wanxiang-lantian, rime-wanxiang-daniu
 Description: wanxiang microsoft double pinyin for rime
  wanxiang microsoft double pinyin is a pinyin scheme for rime.
 
 Package: rime-wanxiang-sogo
 Architecture: all
 Depends: rime-wanxiang-base, ${misc:Depends}
-Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrm, rime-wanxiang-zrlong, rime-wanxiang-flypy, rime-wanxiang-mspy, rime-wanxiang-abc, rime-wanxiang-ziguang
+Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrm, rime-wanxiang-zrlong, rime-wanxiang-flypy, rime-wanxiang-mspy, rime-wanxiang-abc, rime-wanxiang-ziguang, rime-wanxiang-lantian, rime-wanxiang-daniu
 Description: wanxiang sogo double pinyin for rime
  wanxiang sogo double pinyin is a pinyin scheme for rime.
 
 Package: rime-wanxiang-abc
 Architecture: all
 Depends: rime-wanxiang-base, ${misc:Depends}
-Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrm, rime-wanxiang-zrlong, rime-wanxiang-flypy, rime-wanxiang-mspy, rime-wanxiang-sogo, rime-wanxiang-ziguang
+Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrm, rime-wanxiang-zrlong, rime-wanxiang-flypy, rime-wanxiang-mspy, rime-wanxiang-sogo, rime-wanxiang-ziguang, rime-wanxiang-lantian, rime-wanxiang-daniu
 Description: wanxiang abc smart double pinyin for rime
  wanxiang abc double pinyin is a pinyin scheme for rime.
 
 Package: rime-wanxiang-ziguang
 Architecture: all
 Depends: rime-wanxiang-base, ${misc:Depends}
-Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrm, rime-wanxiang-zrlong, rime-wanxiang-flypy, rime-wanxiang-mspy, rime-wanxiang-sogo, rime-wanxiang-abc
+Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrm, rime-wanxiang-zrlong, rime-wanxiang-flypy, rime-wanxiang-mspy, rime-wanxiang-sogo, rime-wanxiang-abc, rime-wanxiang-lantian, rime-wanxiang-daniu
 Description: wanxiang ziguang double pinyin for rime
  wanxiang ziguang double pinyin is a pinyin scheme for rime.
+
+Package: rime-wanxiang-lantian
+Architecture: all
+Depends: rime-wanxiang-base, ${misc:Depends}
+Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrm, rime-wanxiang-zrlong, rime-wanxiang-flypy, rime-wanxiang-mspy, rime-wanxiang-sogo, rime-wanxiang-abc, rime-wanxiang-ziguang, rime-wanxiang-daniu
+Description: wanxiang lantian double pinyin for rime
+ wanxiang lantian double pinyin is a pinyin scheme for rime.
+
+Package: rime-wanxiang-daniu
+Architecture: all
+Depends: rime-wanxiang-base, ${misc:Depends}
+Conflicts: rime-wanxiang-pinyin, rime-wanxiang-zrm, rime-wanxiang-zrlong, rime-wanxiang-flypy, rime-wanxiang-mspy, rime-wanxiang-sogo, rime-wanxiang-abc, rime-wanxiang-ziguang, rime-wanxiang-lantian
+Description: wanxiang daniu double pinyin for rime
+ wanxiang daniu double pinyin is a pinyin scheme for rime.

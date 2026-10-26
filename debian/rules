@@ -1,8 +1,8 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-SCHEMAS = pinyin zrm zrlong flypy sogo mspy abc ziguang
-SCHEMAS_ZH = 全拼 自然码 自然龙 小鹤双拼 搜狗双拼 微软双拼 智能ABC 紫光双拼
+SCHEMAS = pinyin zrm zrlong flypy sogo mspy abc ziguang lantian daniu
+SCHEMAS_ZH = 全拼 自然码 自然龙 小鹤双拼 搜狗双拼 微软双拼 智能ABC 紫光双拼 蓝天双拼 大牛双拼
 
 
 %:
@@ -10,7 +10,7 @@ SCHEMAS_ZH = 全拼 自然码 自然龙 小鹤双拼 搜狗双拼 微软双拼 �
 
 override_dh_auto_install:
 	cp wanxiang.schema.yaml wanxiang.schema.yaml.orig
-	$(foreach i,1 2 3 4 5 6 7 8, \
+	$(foreach i,1 2 3 4 5 6 7 8 9 10, \
 		$(eval schema=$(word $i,$(SCHEMAS))) \
 		$(eval schema_zh=$(word $i,$(SCHEMAS_ZH))) \
 		mkdir -p debian/rime-wanxiang-$(schema)/usr/share/rime-data/; \
@@ -21,6 +21,7 @@ override_dh_auto_install:
 	mkdir -p debian/rime-wanxiang-base/usr/bin
 	mkdir -p debian/rime-wanxiang-base/usr/share/rime-data/lua/
 	mkdir -p debian/rime-wanxiang-base/usr/share/rime-data/wanxiang/
+	mkdir -p debian/rime-wanxiang-base/usr/share/rime-data/opencc/
 	mkdir -p debian/rime-wanxiang-base/usr/share/rime-data/build/
 	mkdir -p debian/rime-wanxiang-base/usr/share/rime-data/custom/
 
@@ -28,13 +29,14 @@ override_dh_auto_install:
 
 
 
-	cp debian/wanxiang-deploy debian/rime-wanxiang-base/usr/bin/
-	cp -r dicts/ debian/rime-wanxiang-base/usr/share/rime-data/dicts
-	cp -r lua/* debian/rime-wanxiang-base/usr/share/rime-data/lua/
-	cp wanxiang*.yaml debian/rime-wanxiang-base/usr/share/rime-data/
+	cp -a lua/. debian/rime-wanxiang-base/usr/share/rime-data/lua/
+	cp -a opencc/. debian/rime-wanxiang-base/usr/share/rime-data/opencc/
+	cp -a build/. debian/rime-wanxiang-base/usr/share/rime-data/build/
+	cp -a custom/*.yaml debian/rime-wanxiang-base/usr/share/rime-data/custom/
 	cp custom/*.yaml debian/rime-wanxiang-base/usr/share/rime-data/custom
+	cp wanxiang*.yaml debian/rime-wanxiang-base/usr/share/rime-data/
 	cp default.yaml debian/rime-wanxiang-base/usr/share/rime-data/wanxiang/default.yaml
-	cp custom_phrase.txt debian/rime-wanxiang-base/usr/share/rime-data/custom_phrase.txt
+	cp custom_phrase.dict.yaml debian/rime-wanxiang-base/usr/share/rime-data/custom_phrase.dict.yaml
 	rime_deployer --compile debian/rime-wanxiang-base/usr/share/rime-data/wanxiang.schema.yaml
 	cp -r build/* debian/rime-wanxiang-base/usr/share/rime-data/build/
 	rm -rf build
@@ -42,8 +44,7 @@ override_dh_auto_install:
 	rm -rf debian/rime-wanxiang-base/usr/share/rime-data/wanxiang.schema.yaml
 
 execute_after_dh_fixperms:
-	chmod 644 debian/rime-wanxiang-base/usr/share/rime-data/wanxiang_english.dict.yaml
-	chmod 644 debian/rime-wanxiang-base/usr/share/rime-data/wanxiang_english.schema.yaml
+	chmod 644 debian/rime-wanxiang-base/usr/share/rime-data/wanxiang*yaml
 
 clean:
 	rm -f wanxiang.schema.yaml.orig

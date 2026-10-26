@@ -5,10 +5,16 @@ Source: https://github.com/amzxyz/rime-wanxiang
 Files-Excluded:
  custom/万象键位映射.jpg
  custom/赞赏.jpg
- wanxiang_t9.schema.yaml
  weasel.yaml
  README.md
-
+ AGENTS.md
+ version.txt
+ wanxiang_t9.schema.yaml
+ wanxiang_t9i.schema.yaml
+ wanxiang_abbrev_t9.schema.yaml
+ wanxiang_phrase_t9.schema.yaml
+ wanxiang_abbrev_t9.dict.yaml
+ dicts/t9_abbrev.dict.yaml
 Files: *
 Copyright: 2025 amzxyz <rcm@qq.com>
 License: CC-BY-4.0
